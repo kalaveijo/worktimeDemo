@@ -51,6 +51,13 @@ A full-stack application for recording weekly workhours by project, with secure 
 - /docker
 	- docker-compose for local database/full stack options
 
+## Current Repository Layout
+- /workhours: ASP.NET Core backend API
+- /workhours.Tests: backend unit tests (xUnit)
+- /frontend: React + Vite + TypeScript frontend with Vitest component tests
+- /docker-compose.yml: local PostgreSQL stack
+- /.env.example: local environment variable template for DB and API wiring
+
 ## API Expectations
 - Auth endpoints:
 	- POST /api/auth/register
@@ -64,10 +71,20 @@ A full-stack application for recording weekly workhours by project, with secure 
 All workhours endpoints must resolve the current user from token claims and enforce ownership server-side.
 
 ## Local Development
-- Run PostgreSQL in Docker.
-- Run backend locally for debugging.
-- Run frontend locally for debugging.
-- Configure connection strings and auth settings in appsettings and env files.
+1. Copy `.env.example` to `.env` at repository root and adjust values if needed.
+2. Start local database from repository root:
+	- `docker compose up -d`
+3. Run backend from `/workhours`:
+	- `dotnet run`
+4. Run frontend from `/frontend`:
+	- `npm install`
+	- copy `.env.example` to `.env.local` (optional override)
+	- `npm run dev`
+
+### Local Networking Notes
+- Frontend dev server runs on `http://localhost:5173`.
+- Frontend calls backend directly through `VITE_API_BASE_URL`.
+- Backend CORS allow list is configured for `http://localhost:5173`.
 
 ## Security Notes
 - Access token lifetime: 15 minutes.
