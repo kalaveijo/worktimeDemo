@@ -4,21 +4,22 @@ A full-stack application for recording weekly workhours by project, with secure 
 
 ## Features
 - Account registration and login (email/password).
-- Bearer token authentication using OpenIddict.
+- Bearer token authentication with 15-minute JWT access tokens.
 - Week browsing (defaults to current week).
 - Daily time entry per project (free-text project name).
-- Finalize week to lock entries.
+- Finalize week with a persisted boolean status.
 - Strict user data isolation (users see only their own records).
-- Logout and automatic session expiration after 15 minutes.
+- Logout with immediate token revocation plus automatic session expiration after 15 minutes.
 
 ## Tech Stack
 - Backend: .NET REST API
 - Frontend: React + Vite
-- Auth: OpenIddict (bearer tokens)
+- Auth: JWT bearer tokens
 - Database: PostgreSQL
+- Token revocation: Redis
 - ORM: Entity Framework Core
 - Testing: Dedicated backend and frontend test projects
-- Containers: Backend and frontend containerized; PostgreSQL in Docker for local development
+- Containers: Backend and frontend containerized; PostgreSQL and Redis in Docker for local development
 
 ## High-Level Architecture
 - Controllers: HTTP transport only, no business logic.
@@ -64,9 +65,12 @@ A full-stack application for recording weekly workhours by project, with secure 
 	- POST /api/auth/login
 	- POST /api/auth/logout
 - Workhours endpoints (authorized):
-	- GET /api/weeks/{year}/{week} (or default current week)
-	- PUT /api/weeks/{year}/{week}/entries
-	- POST /api/weeks/{year}/{week}/finalize
+	- GET /api/weeks?date=2026-03-27
+	- GET /api/weeks/{workweekId}/entries
+	- POST /api/weeks/{workweekId}/entries
+	- PUT /api/weeks/{workweekId}/entries/{entryId}
+	- DELETE /api/weeks/{workweekId}/entries/{entryId}
+	- PATCH /api/weeks/{workweekId}/finalize
 
 All workhours endpoints must resolve the current user from token claims and enforce ownership server-side.
 
@@ -75,6 +79,7 @@ All workhours endpoints must resolve the current user from token claims and enfo
 2. Start local database from repository root:
 	- `docker compose up -d`
 3. Run backend from `/workhours`:
+	- `dotnet ef database update`
 	- `dotnet run`
 4. Run frontend from `/frontend`:
 	- `npm install`
@@ -85,11 +90,19 @@ All workhours endpoints must resolve the current user from token claims and enfo
 - Frontend dev server runs on `http://localhost:5173`.
 - Frontend calls backend directly through `VITE_API_BASE_URL`.
 - Backend CORS allow list is configured for `http://localhost:5173`.
+- Redis runs on `localhost:6379` for logout token revocation.
 
 ## Security Notes
 - Access token lifetime: 15 minutes.
 - Protected endpoints require valid bearer token.
 - Tokens include user identifier claim used for authorization.
+- Logged out tokens are blacklisted immediately until they expire.
+
+## Database Artifacts
+- EF Core migrations live in `/workhours/Infrastructure/Data/Migrations`.
+- Idempotent SQL deployment script lives in `/workhours/Infrastructure/Migrations/Initial.sql`.
+- Regenerate the script with:
+	- `dotnet ef migrations script --idempotent --project ./workhours/workhours.csproj --startup-project ./workhours/workhours.csproj --output ./workhours/Infrastructure/Migrations/Initial.sql`
 
 ## Testing
 - Backend tests:
